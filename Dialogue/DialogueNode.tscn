@@ -1,0 +1,84 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://Dialogue/Dialogue.gd" type="Script" id=1]
+[ext_resource path="/Users/Legion/Desktop/Gamedev tools/DialogEditor/GodotDialogueNode/icon.png" type="Texture" id=2]
+
+[node name="Dialogue" type="Node2D"]
+script = ExtResource( 1 )
+npc_name = "Intro"
+dialog_key = ""
+has_input = true
+
+[node name="Panel" type="PanelContainer" parent="."]
+margin_right = 600.0
+margin_bottom = 300.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+margin_left = 7.0
+margin_top = 7.0
+margin_right = 593.0
+margin_bottom = 267.0
+size_flags_horizontal = 3
+size_flags_vertical = 2
+
+[node name="Namelabel" type="Label" parent="Panel/VBox"]
+margin_right = 586.0
+margin_bottom = 14.0
+text = "Godot"
+
+[node name="Photo" type="TextureRect" parent="Panel/VBox"]
+margin_top = 18.0
+margin_right = 586.0
+margin_bottom = 82.0
+texture = ExtResource( 2 )
+
+[node name="Message" type="RichTextLabel" parent="Panel/VBox"]
+margin_top = 86.0
+margin_right = 586.0
+margin_bottom = 236.0
+rect_min_size = Vector2( 0, 150 )
+size_flags_horizontal = 3
+size_flags_vertical = 3
+visible_characters = 41
+text = "Salut, ceci est un dialogue sans options."
+
+[node name="Choices" type="VBoxContainer" parent="Panel/VBox"]
+visible = false
+margin_top = 240.0
+margin_right = 586.0
+margin_bottom = 284.0
+
+[node name="MarginContainer" type="MarginContainer" parent="Panel/VBox"]
+margin_top = 240.0
+margin_right = 42.0
+margin_bottom = 260.0
+size_flags_horizontal = 0
+size_flags_vertical = 0
+
+[node name="Next" type="Button" parent="Panel/VBox/MarginContainer"]
+margin_right = 42.0
+margin_bottom = 20.0
+size_flags_horizontal = 0
+size_flags_vertical = 0
+text = "Next"
+
+[node name="End" type="Button" parent="Panel/VBox/MarginContainer"]
+visible = false
+margin_right = 35.0
+margin_bottom = 20.0
+size_flags_horizontal = 0
+size_flags_vertical = 0
+text = "End"
+
+[node name="Timer" type="Timer" parent="."]
+wait_time = 0.001
+one_shot = true
+
+[node name="Tween" type="Tween" parent="."]
+
+[connection signal="pressed" from="Panel/VBox/MarginContainer/Next" to="." method="_on_Next_pressed"]
+[connection signal="pressed" from="Panel/VBox/MarginContainer/End" to="." method="_on_End_pressed"]
+[connection signal="timeout" from="Timer" to="." method="_on_Timeout"]
