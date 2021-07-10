@@ -4,10 +4,11 @@ extends Node2D
 
 # Stand-alone node for the display of dialogues based on json files made with Levrault's dialogue editor
 # Editor can be found here:  https://github.com/Levrault/LE-dialogue-editor
-# Use it to make and file your json file in the Dialogue folder
-# Load .json by triggering load(path), where path is the name without extension in a folder called Dialogue
+# Use it to make and save your json file in the "Dialogue" folder
+# Load .json by triggering load(path) from your game script, where path is the name without extension in a folder called Dialogue
 # Then start dialogue with start() from your game script(s)
-# To use a timed dialogue box (which closes automatically), use the signal dialogue_timer(seconds)
+# To use a timed dialogue box (which closes automatically), use the signal "timer" with the seconds as value
+# Conditions based on variables work using variables defined in this script or as autoload.variable
 
 export (int) var width = 600
 export (int) var height = 300
@@ -27,6 +28,7 @@ var _message : String = ''
 var _is_last_dialogue : bool= false
 var _has_next_button : bool = false
 var _has_timer : bool = false
+var _has_condition : bool = false
 var _state: int = States.pending
 
 #  change the below to allocate the various panels (which you can easily customize)
@@ -52,11 +54,15 @@ signal dialogue_choices_changed(choices)
 signal dialogue_choices_displayed
 signal dialogue_choices_finished(choices)
 signal dialogue_choices_pressed
-signal dialogue_timer(seconds)
+signal nextbutton_pressed
+signal dialogue_condition(condition)
+signal timer(seconds)
+signal codexec(codetoexecute)
 
 # --------------------------
 
 func _ready():
+	TranslationServer.set_locale("Fr")
 	# change this to adjust panel size 
 	$Panel.rect_size.x = width
 	$Panel.rect_size.y = height
@@ -72,14 +78,16 @@ func _ready():
 	connect("dialogue_choices_changed", self, "_on_Choice_changed")
 	connect("dialogue_choices_finished", self, "_on_Choices_finished")
 	connect("dialogue_text_displayed", self,"_on_dialogue_displayed")
+	connect("dialogue_condition",self,"_on_conditions_check")
 
 	_next.visible=false
 	_end.visible=false
 	_choices_panel.visible=false
 	
 #--------------------------------------------------------------------
-	# the below is only for testing purposes
+	# the two lines of code below are only for testing purposes
 	# load and start functions should rather be triggered by game scripts
+	
 	loaddialogue("Intro") # required to load the correct json file
 	start()  # starts the dialogue
 #--------------------------------------------------------------------
@@ -170,12 +178,16 @@ func _on_End_pressed():
 
 # next button pressed
 func _on_Next_pressed():
-	next()
 	_has_next_button=false
 	_next.visible=false
+	if _has_condition:
+		_has_condition=false
+		emit_signal("nextbutton_pressed")
+	else:
+		next()
 
 # timed dialogue box (signal "dialogue_timer" and the waiting time value)
-func dialogue_timer(seconds:int):
+func timer(seconds:int):
 	_has_timer = true
 	yield(get_tree().create_timer(seconds),"timeout")
 	_on_Timeout()
@@ -183,6 +195,12 @@ func dialogue_timer(seconds:int):
 # Triggered by the timer node when time is out
 func _on_Timeout() -> void:
 	_on_Dialogue_finished()
+
+# Execute some code
+func codexec(codetoexec:String):
+	# TODO: accept only certain things?
+	# execute the code requested
+	pass
 
 # ----------------------------------------
 # Back-office dialogue functions
@@ -228,6 +246,11 @@ func change() -> void:
 		emit_signal("dialogue_choices_changed", get_choices(_current_dialogue.choices, conditions))
 		return
 
+	# there are conditions linked to the next dialogue
+	if _current_dialogue.has("conditions"):
+		emit_signal("dialogue_condition",_current_dialogue.conditions)
+		return
+
 	# there is no linked dialogue and no choice
 	if not _current_dialogue.has("conditions") and not _current_dialogue.get("next"):
 		emit_signal("dialogue_last_dialogue_displayed")
@@ -243,12 +266,14 @@ func clear() -> void:
 	_current_dialogue = {}
 	_conditions = {}
 
+# get next node depending on situation
 func get_next(node: Dictionary) -> Dictionary:
+	var default_next := "05f2b40d-5f4c-4544-bcde-793df48faab6"
+
 	if node.has("next"):
 		return dialogue_json[node.next]
 
 	var next := ""
-	var default_next := ""
 	if node.has("conditions"):
 		var conditions = node.conditions.duplicate(true)
 		var matching_condition := 0
@@ -283,6 +308,42 @@ func get_next(node: Dictionary) -> Dictionary:
 
 	assert(default_next.empty() == false)
 	return dialogue_json[default_next]
+
+# function to manage condition node
+func _on_conditions_check(conditions: Array):
+	for condition in conditions:
+		for key in condition.keys():
+			if key != "next":
+				if checkiftrue(key, condition[key]):
+					_has_condition=true
+					_has_next_button=true
+					yield(self,"nextbutton_pressed") # wair for next button to be pressed
+					emit_signal("dialogue_choices_finished", condition["next"])
+	# NB : if none of the conditions are met it's a dead end ...
+
+# checks if a given condition is true and returns a boolean
+func checkiftrue(variable, condition) -> bool:
+	var vartocheck=get(variable)
+	if "autoload" in variable: # variable for conditions can be an autoload
+		variable=variable.replace("autoload.","")
+		vartocheck=autoload.get(variable)
+	if condition ["type"] == "boolean": 
+		if vartocheck == condition["value"]: return true
+		else: return false
+	if condition ["type"] == "int":
+		if condition ["operator"] == "equal":
+			if vartocheck == condition["value"]: return true
+			else: return false
+		if condition ["operator"] == "higher":
+			if vartocheck > condition["value"]: return true
+			else: return false
+		if condition ["operator"] == "lower":
+			if vartocheck < condition["value"]: return true
+			else: return false
+		if condition ["operator"] == "different":
+			if vartocheck != condition["value"]: return true
+			else: return false
+	return false
 
 func get_choices(choices: Array, conditions: Array = []) -> Array:
 	if conditions.empty():
