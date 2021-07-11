@@ -62,7 +62,6 @@ signal codexec(codetoexecute)
 # --------------------------
 
 func _ready():
-	TranslationServer.set_locale("Fr")
 	# change this to adjust panel size 
 	$Panel.rect_size.x = width
 	$Panel.rect_size.y = height
