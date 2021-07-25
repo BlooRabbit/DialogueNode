@@ -333,7 +333,7 @@ func checkiftrue(variable, condition) -> bool:
 		if condition ["operator"] == "equal":
 			if vartocheck == condition["value"]: return true
 			else: return false
-		if condition ["operator"] == "higher":
+		if condition ["operator"] == "greater":
 			if vartocheck > condition["value"]: return true
 			else: return false
 		if condition ["operator"] == "lower":
